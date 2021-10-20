@@ -59,9 +59,16 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { loginId, password } = req.body;
 
-    let user = await UserModel.findOne({email});  // database -> search -> return
+    let user;
+
+    if(validator.isEmail(loginId)) {
+        user = await UserModel.findOne({email: loginId});  // database -> search -> return
+    }
+    else {
+        user = await UserModel.findOne({username: loginId});
+    }
 
     if(!user) {
         return res.send("User not found");
@@ -81,7 +88,7 @@ app.post('/login', async (req, res) => {
     return;
 });
 
-const cleanAndValidate = ({name, email, password}) => {
+const cleanAndValidate = ({name, email, password, username}) => {
 
     return new Promise(async (resolve, reject) => {
         if(typeof(email) != "string") email = "";
@@ -94,12 +101,22 @@ const cleanAndValidate = ({name, email, password}) => {
             reject("Invalid Email");
 
         if(password.length > 0 && password.length < 6) // 6 character, small, capital, symbol, number
-             reject("Password too short");
+            reject("Password too short");
 
-        let user = await UserModel.findOne({email});
+        if(username.length < 3)
+            reject("Username is too short")
+
+        let user;
+        
+        user = await UserModel.findOne({email});
 
         if(user)
             reject("User already exists");
+
+        user = await UserModel.findOne({username});
+        
+        if(user)
+            reject("Username is already taken");
 
         resolve();
     });  
@@ -107,11 +124,9 @@ const cleanAndValidate = ({name, email, password}) => {
 }
 
 app.post('/register', async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, username } = req.body;
     try {
         await cleanAndValidate(req.body);
-        await find();
-        await game();
     }
     catch(err) {
         console.log(err);
@@ -124,6 +139,7 @@ app.post('/register', async (req, res) => {
     user = new UserModel({
         name,
         email,
+        username,
         password: hashedPassword
     });
 
@@ -153,4 +169,21 @@ app.listen(PORT, () => {
 });
 
 
-// Route, Middleware
+
+// Select p.id, p.name, p.age, c.dob, c.card_no, a.acc_no, a.acc_type from Personal_deatils p INNER JOIN
+// Card_deatils c INNER JOIN Account_details a where p.id = c.id AND p.id = a.id;
+
+// Select p.id, p.name, p.age, c.dob, c.card_no from Personal_deatils p LEFT JOIN
+// Card_deatils c where p.id = c.id;
+
+// Select p.id, p.name, p.age, c.dob, c.card_no from Personal_deatils p RIGHT JOIN
+// Card_deatils c where p.id = c.id;
+
+// Select p.id, p.name, p.age, c.dob, c.card_no from Personal_deatils p OUTER JOIN
+// Card_deatils c where p.id = c.id;
+
+
+// Select p.id, p.name, p.age, c.dob, c.card_no, a.acc_no, a.acc_type from Personal_deatils p LEFT JOIN
+// Card_deatils c INNER JOIN Account_details a where p.id = c.id AND p.id = a.id;
+
+
