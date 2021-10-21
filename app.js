@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const validator = require('validator');
 
 const UserModel = require('./Model/User');
+const TodoModel = require('./Model/Todo'); 
 
 const app = express();
 const PORT = 3000;
@@ -156,18 +157,95 @@ app.post('/logout', (req, res) => {
     });
 })
 
-app.get('/dashboard', isAuth, (req, res) => {
-    res.render('dashboard');
+app.get('/dashboard', isAuth, async (req, res) => {
+
+    try {
+        let todos = await TodoModel.find();
+
+        res.render('dashboard', {todos: todos});
+    }
+    catch(err) {
+        res.send({
+            status: 400,
+            message: "An internal error occured",
+            error: err
+        });
+    }
 });
 
 app.get('/home', isAuth, (req, res) => {
     res.send('Welcome to home page');
 });
 
+app.post('/create-item', isAuth, async (req, res) => {
+    
+    let todo = new TodoModel({
+        todo: req.body.itemName
+    });
+
+    try {
+        let result = await todo.save();
+
+        res.send({
+            status: 200,
+            message: "Todo Saved Successfully",
+            data: result
+        });
+    }
+    catch(err) {
+        res.send({
+            status: 400,
+            message: "An error has occured",
+            error: err
+        });
+    }
+});
+
+app.post('/edit-item', isAuth, async (req, res) => {
+
+    try {
+        let result = await TodoModel.findOneAndUpdate({_id: req.body._id}, {todo: req.body.message});
+
+        res.send({
+            status: 200,
+            message: "Data updated Successfully",
+            data: result
+        });
+    }
+    catch(err) {
+        res.send({
+            status: 400,
+            message: "An error occured cannot update item",
+            error: err
+        });
+    }
+});
+
+app.post('/delete-item', async (req, res) => {
+    try {
+        let result = await TodoModel.deleteOne({_id: req.body._id});
+
+        res.send({
+            status: 200,
+            message: "Data deleted Successfully",
+            data: result
+        });
+    }
+    catch(err) {
+        res.send({
+            status: 400,
+            message: "An error occured cannot update item",
+            error: err
+        });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);
 });
 
+
+// deleteOne, insertOne, find, findOne, findOneandUpdate, 
 
 
 // Select p.id, p.name, p.age, c.dob, c.card_no, a.acc_no, a.acc_type from Personal_deatils p INNER JOIN
