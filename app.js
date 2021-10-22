@@ -13,6 +13,7 @@ const PORT = 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
+app.use(express.static('public'));
 
 const mongoURI = `mongodb+srv://myappuser:ritikkumar@cluster0.mjfcg.mongodb.net/octoberSessions?retryWrites=true&w=majority`;
 
@@ -186,11 +187,13 @@ app.post('/create-item', isAuth, async (req, res) => {
     try {
         let result = await todo.save();
 
-        res.send({
-            status: 200,
-            message: "Todo Saved Successfully",
-            data: result
-        });
+        res.redirect('/dashboard');
+
+        // res.send({
+        //     status: 200,
+        //     message: "Todo Saved Successfully",
+        //     data: result
+        // });
     }
     catch(err) {
         res.send({
@@ -201,7 +204,7 @@ app.post('/create-item', isAuth, async (req, res) => {
     }
 });
 
-app.post('/edit-item', isAuth, async (req, res) => {
+app.patch('/edit-item', isAuth, async (req, res) => {
 
     try {
         let result = await TodoModel.findOneAndUpdate({_id: req.body._id}, {todo: req.body.message});
@@ -221,7 +224,7 @@ app.post('/edit-item', isAuth, async (req, res) => {
     }
 });
 
-app.post('/delete-item', async (req, res) => {
+app.post('/delete-item', isAuth, async (req, res) => {
     try {
         let result = await TodoModel.deleteOne({_id: req.body._id});
 
