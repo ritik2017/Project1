@@ -175,8 +175,38 @@ app.get('/dashboard', isAuth, async (req, res) => {
 });
 
 app.get('/home', isAuth, (req, res) => {
-    res.send('Welcome to home page');
+    res.render('home');
 });
+
+app.post('/pagination_dashboard', isAuth, async (req, res) => {
+
+    let skip = req.query.skip || 0;
+
+    try {
+
+        let todos = await TodoModel.aggregate([
+            { $facet: {
+                data: [ {"$skip": parseInt(skip)}, {"$limit": 4} ]
+            } }
+        ]);
+
+        console.log(todos);
+
+        res.send({
+            status: 200,
+            message: "Request Successful",
+            value: todos
+        });
+
+    }
+    catch(err) {
+        res.send({
+            status: 400,
+            message: "An internal error occured",
+            error: err
+        });
+    }
+})
 
 app.post('/create-item', isAuth, async (req, res) => {
     
@@ -187,13 +217,11 @@ app.post('/create-item', isAuth, async (req, res) => {
     try {
         let result = await todo.save();
 
-        res.redirect('/dashboard');
-
-        // res.send({
-        //     status: 200,
-        //     message: "Todo Saved Successfully",
-        //     data: result
-        // });
+        res.send({
+            status: 200,
+            message: "Todo Saved Successfully",
+            data: result
+        });
     }
     catch(err) {
         res.send({
@@ -268,3 +296,4 @@ app.listen(PORT, () => {
 // Card_deatils c INNER JOIN Account_details a where p.id = c.id AND p.id = a.id;
 
 
+// Select * from todos Limit 4 OFFSET 0
