@@ -39,6 +39,8 @@ app.use(session({
     store: store
 }));
 
+const accesses = {};
+
 const isAuth = (req, res, next) => {
     if(req.session.isAuth) {
         next();
@@ -46,6 +48,36 @@ const isAuth = (req, res, next) => {
     else {
         return res.redirect('/login');
     }
+}
+
+const rateLimiting = (req, res, next) => {
+
+    console.log(accesses);
+    const sessionId = req.session.id;
+
+    if(!sessionId) {
+        res.send({
+            status: 400,
+            message: "Missing Session"
+        })
+    }
+
+    if(sessionId in accesses) { // O(1)
+        const previousAccessTime = accesses[sessionId];
+
+        if(Date.now() - previousAccessTime < 300) {
+            console.log(accesses, Date.now());
+            res.send({
+                status: 404,
+                message: "Max req limit reached"
+            });
+            return;
+        }
+    }
+
+    accesses[sessionId] = Date.now();
+
+    next();
 }
 
 app.get('/', (req, res) => {
@@ -158,7 +190,9 @@ app.post('/logout', (req, res) => {
     });
 })
 
-app.get('/dashboard', isAuth, async (req, res) => {
+app.get('/dashboard', rateLimiting, isAuth, async (req, res) => {
+
+    console.log(req.session.id);
 
     try {
         let todos = await TodoModel.find();
@@ -174,11 +208,11 @@ app.get('/dashboard', isAuth, async (req, res) => {
     }
 });
 
-app.get('/home', isAuth, (req, res) => {
+app.get('/home', rateLimiting, isAuth, (req, res) => {
     res.render('home');
 });
 
-app.post('/pagination_dashboard', isAuth, async (req, res) => {
+app.post('/pagination_dashboard', rateLimiting, isAuth, async (req, res) => {
 
     let skip = req.query.skip || 0;
 
@@ -208,7 +242,7 @@ app.post('/pagination_dashboard', isAuth, async (req, res) => {
     }
 })
 
-app.post('/create-item', isAuth, async (req, res) => {
+app.post('/create-item', rateLimiting, isAuth, async (req, res) => {
     
     let todo = new TodoModel({
         todo: req.body.itemName
@@ -232,7 +266,7 @@ app.post('/create-item', isAuth, async (req, res) => {
     }
 });
 
-app.patch('/edit-item', isAuth, async (req, res) => {
+app.patch('/edit-item', rateLimiting, isAuth, async (req, res) => {
 
     try {
         let result = await TodoModel.findOneAndUpdate({_id: req.body._id}, {todo: req.body.message});
@@ -252,7 +286,7 @@ app.patch('/edit-item', isAuth, async (req, res) => {
     }
 });
 
-app.post('/delete-item', isAuth, async (req, res) => {
+app.post('/delete-item', rateLimiting, isAuth, async (req, res) => {
     try {
         let result = await TodoModel.deleteOne({_id: req.body._id});
 
@@ -270,6 +304,42 @@ app.post('/delete-item', isAuth, async (req, res) => {
         });
     }
 });
+
+// // userid: "time"
+
+// app.get('/index/:userid', (req, res) => {
+//     const {userid} = req.params;
+
+//     if(!userid) {
+//         res.send({
+//             status: 400,
+//             message: "Missing userid"
+//         })
+//     }
+
+//     if(userid in accesses) { // O(1)
+//         const previousAccessTime = accesses[userid];
+
+//         if(Date.now() - previousAccessTime < 100) {
+//             console.log(accesses, Date.now());
+//             res.send({
+//                 status: 404,
+//                 message: "Max req limit reached"
+//             });
+//             return;
+//         }
+//     }
+
+//     // Database op
+//     // Logic 
+
+//     accesses[userid] = Date.now();
+
+//     res.send({
+//         status: 200,
+//         message: "Welcome to index page"
+//     });
+// })
 
 app.listen( process.env.PORT || PORT, () => {
     console.log(`Listening on port ${PORT}`);
